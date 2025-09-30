@@ -9,28 +9,41 @@ const upsertProfile = async (
   input: CreateProfileInput | UpdateProfileInput
 ) => {
   try {
-    // Ensure required fields for create
-    const { firstName, lastName, phone, address, bio } =
-      input as CreateProfileInput;
-    if (!firstName || !lastName) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'firstName and lastName are required to create a profile.'
-      );
-    }
-    const profile = await prisma.profile.upsert({
+    // Check if profile exists
+    const existingProfile = await prisma.profile.findUnique({
       where: { userId },
-      update: input,
-      create: {
-        userId,
-        firstName,
-        lastName,
-        phone,
-        address,
-        bio,
-      },
     });
-    return profile;
+
+    if (existingProfile) {
+      // Update existing profile
+      const profile = await prisma.profile.update({
+        where: { userId },
+        data: input,
+      });
+      return profile;
+    } else {
+      // Create new profile - ensure required fields
+      const { firstName, lastName, phone, address, bio } =
+        input as CreateProfileInput;
+      if (!firstName || !lastName) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          'firstName and lastName are required to create a profile.'
+        );
+      }
+      const profile = await prisma.profile.create({
+        data: {
+          userId,
+          firstName,
+          lastName,
+          phone,
+          address,
+          bio,
+          profileImage: (input as any).profileImage || null,
+        },
+      });
+      return profile;
+    }
   } catch (error) {
     // This handles a race condition where a user might try to create a profile twice quickly
     if (

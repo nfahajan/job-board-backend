@@ -6,7 +6,7 @@ import type { Express } from 'express';
 import sendResponse from '../../../shared/sendRespons';
 import httpStatus from 'http-status';
 
- const uploadResumeHandler = catchAsync(async (req: Request, res: Response) => {
+const uploadResumeHandler = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id as string;
   const file = req.file as Express.Multer.File;
   const input: UploadResumeInput = req.body;
@@ -16,7 +16,7 @@ import httpStatus from 'http-status';
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
-    message: 'Jobs fetched successfully',
+    message: 'Resume uploaded successfully',
     success: true,
     data: result,
   });
@@ -37,9 +37,9 @@ const deleteResumeHandler = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getAllResumesHandler = catchAsync(async (req: Request, res: Response) => {
-  // Call the service to get all resumes
-  const result = await ResumeService.getAllResumes();
+const getMyResumesHandler = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id as string;
+  const result = await ResumeService.getResumesByUser(userId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -50,20 +50,48 @@ const getAllResumesHandler = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getResumeByIdHandler = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id as string;
   const { resumeId } = req.params;
-    // Call the service to get resume by ID
-    const result = await ResumeService.getDefaultResume(resumeId);
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        message: 'Resume fetched successfully',
-        success: true,
-        data: result,
-        });
+  const result = await ResumeService.getResumeById(userId, resumeId);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: 'Resume fetched successfully',
+    success: true,
+    data: result,
+  });
 });
+
+const updateResumeHandler = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id as string;
+  const { resumeId } = req.params;
+  const result = await ResumeService.updateResume(userId, resumeId, req.body);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: 'Resume updated successfully',
+    success: true,
+    data: result,
+  });
+});
+
+const setDefaultResumeHandler = catchAsync(
+  async (req: Request, res: Response) => {
+    const userId = req.user?.id as string;
+    const { resumeId } = req.params;
+    const result = await ResumeService.setDefaultResume(userId, resumeId);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      message: 'Default resume set successfully',
+      success: true,
+      data: result,
+    });
+  }
+);
 
 export const ResumeController = {
   uploadResumeHandler,
   deleteResumeHandler,
-  getAllResumesHandler,
-    getResumeByIdHandler,
+  getMyResumesHandler,
+  getResumeByIdHandler,
+  updateResumeHandler,
+  setDefaultResumeHandler,
 };

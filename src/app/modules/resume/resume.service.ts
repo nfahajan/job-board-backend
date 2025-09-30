@@ -15,7 +15,10 @@ const createResume = async (
   }
 
   // Upload file to Cloudinary
-  const uploadResult = await FileUploadHelper.uploadToCloudinary(file);
+  const uploadResult = await FileUploadHelper.uploadToCloudinary(
+    file,
+    'resumes'
+  );
   if (!uploadResult) {
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -33,7 +36,10 @@ const createResume = async (
 
   const resume = await prisma.resume.create({
     data: {
-      ...input,
+      title: input.title,
+      isDefault:
+        input.isDefault === true ||
+        (typeof input.isDefault === 'string' && input.isDefault === 'true'),
       userId,
       fileUrl: uploadResult,
     },
@@ -61,23 +67,70 @@ const deleteResume = async (userId: string, resumeId: string) => {
   await prisma.resume.delete({ where: { id: resumeId } });
 };
 
-const getAllResumes = async () => {
+const getResumesByUser = async (userId: string) => {
   const resumes = await prisma.resume.findMany({
-    orderBy: { createdAt: 'desc' },
+    where: { userId },
+    orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
   });
   return resumes;
 };
 
-const getDefaultResume = async (userId: string) => {
-  const resume = await prisma.resume.findFirst({
-    where: { userId, isDefault: true },
-  });
+const getResumeById = async (userId: string, resumeId: string) => {
+  const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+  if (!resume || resume.userId !== userId) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Resume not found');
+  }
   return resume;
+};
+
+const updateResume = async (
+  userId: string,
+  resumeId: string,
+  data: Partial<{ title: string; isDefault: boolean }>
+) => {
+  const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+  if (!resume || resume.userId !== userId) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Resume not found');
+  }
+
+  if (data.isDefault) {
+    await prisma.resume.updateMany({
+      where: { userId },
+      data: { isDefault: false },
+    });
+  }
+
+  const updated = await prisma.resume.update({
+    where: { id: resumeId },
+    data: {
+      title: data.title ?? resume.title,
+      isDefault: data.isDefault ?? resume.isDefault,
+    },
+  });
+  return updated;
+};
+
+const setDefaultResume = async (userId: string, resumeId: string) => {
+  const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+  if (!resume || resume.userId !== userId) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Resume not found');
+  }
+  await prisma.resume.updateMany({
+    where: { userId },
+    data: { isDefault: false },
+  });
+  const updated = await prisma.resume.update({
+    where: { id: resumeId },
+    data: { isDefault: true },
+  });
+  return updated;
 };
 
 export const ResumeService = {
   createResume,
   deleteResume,
-  getAllResumes,
-  getDefaultResume,
+  getResumesByUser,
+  getResumeById,
+  updateResume,
+  setDefaultResume,
 };

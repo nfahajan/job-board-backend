@@ -7,6 +7,12 @@ import { FileUploadHelper } from '../../../helper/cloudinaryHelper';
 const router = express.Router();
 
 router.get('/me', auth(), UserController.getMe);
+router.patch(
+  '/me',
+  auth(),
+  FileUploadHelper.upload.single('file'),
+  UserController.updateMe
+);
 router.get('/', auth(ENUM_USER_ROLE.ADMIN), UserController.getAllFromDb);
 router.get('/:id', auth(ENUM_USER_ROLE.ADMIN), UserController.getByIdFromDb);
 router.delete(

@@ -41,7 +41,6 @@ const createInDb = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateByIdFromDb = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.user as { id: string };
   const result = await JobService.updateByIdFromDb(req.params.id, req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -63,8 +62,8 @@ const deleteByIdFromDb = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getMyJobs = catchAsync(async (req: Request, res: Response) => {
-  const compnayId = req.params.compnayId;
-  const result = await JobService.getMyJobsFromDb(compnayId, req.query);
+  const { id } = req.user as { id: string };
+  const result = await JobService.getMyJobsFromDb(id, req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     message: 'My jobs fetched successfully',
@@ -88,6 +87,18 @@ const updateJobStatus = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const searchJobs = catchAsync(async (req: Request, res: Response) => {
+  const filters = pick(req.query, ['keyword', 'sortBy']);
+  const options = pick(req.query, paginationFields);
+  const result = await JobService.searchJobsFromDb(filters, options);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    message: 'Jobs searched successfully',
+    success: true,
+    data: result,
+  });
+});
+
 export const JobController = {
   getAllJobs,
   getByIdFromDb,
@@ -96,4 +107,5 @@ export const JobController = {
   deleteByIdFromDb,
   getMyJobs,
   updateJobStatus,
+  searchJobs,
 };

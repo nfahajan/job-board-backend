@@ -1,5 +1,21 @@
-export const jobFilterableFields = ['searchTerm', 'title', 'location', 'type', 'salary'];
-export const jobSearchableFields = ['title', 'location', 'type', 'description', 'salary'];
+export const jobFilterableFields = [
+  'searchTerm',
+  'title',
+  'location',
+  'type',
+  'salary',
+  'minSalary',
+  'maxSalary',
+  'skills',
+  'isActive',
+  'sortBy',
+];
+export const jobSearchableFields = [
+  'title',
+  'location',
+  'description',
+  // Only string/text fields should be searched with `contains`
+];
 
 export const jobRelationalFields = ['company'];
 

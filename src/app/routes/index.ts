@@ -6,6 +6,7 @@ import { JobRoutes } from '../modules/job/job.route';
 import { CompanyRoutes } from '../modules/company/company.route';
 import { ApplicationRoutes } from '../modules/application/application.route';
 import { ResumeRoutes } from '../modules/resume/resume.routes';
+import { StatsRoutes } from '../modules/stats/stats.route';
 const router = express.Router();
 const moduleRoutes = [
   {
@@ -33,8 +34,12 @@ const moduleRoutes = [
     route: ApplicationRoutes,
   },
   {
-    path:"/resume",
+    path: '/resume',
     route: ResumeRoutes,
+  },
+  {
+    path: '/stats',
+    route: StatsRoutes,
   },
 ];
 moduleRoutes.forEach(route => router.use(route.path, route.route));

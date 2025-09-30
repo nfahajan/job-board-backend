@@ -18,6 +18,7 @@ enum JobType {
   PART_TIME
   CONTRACT
   INTERNSHIP
+  REMOTE
   TEMPORARY
 }
 
@@ -31,31 +32,30 @@ enum ApplicationStatus {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  role      Role
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  // Job Seeker relations
+  // Relations
   profile      Profile?
   resumes      Resume[]
   applications Application[]
-
-  // Employer relations
-  companies CompanyMember[] // Allows a user to be part of multiple companies
+  companies    CompanyMember[] // Allows a user to be part of multiple companies
 }
 
 model Profile {
-  id        String  @id @default(uuid())
-  firstName String
-  lastName  String
-  phone     String?
-  address   String?
-  bio       String?
-  userId    String  @unique
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String  @id @default(uuid())
+  firstName    String
+  lastName     String
+  phone        String?
+  address      String?
+  bio          String?
+  profileImage String?
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Company {
@@ -64,6 +64,7 @@ model Company {
   description String?
   website     String?
   address     String?
+  logo        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

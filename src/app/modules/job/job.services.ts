@@ -16,12 +16,23 @@ const getAllFromDb = async (
   filters: IJobFilterRequest,
   options: IPaginationOption
 ) => {
-  const { searchTerm, ...filterData } = filters;
+  const {
+    searchTerm,
+    minSalary,
+    maxSalary,
+    skills,
+    isActive,
+    sortBy: filterSortBy,
+    ...filterData
+  } = filters;
 
   const { page, size, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
 
   const andConditions = [];
+
+  // Only show active jobs by default
+  andConditions.push({ isActive: isActive !== undefined ? isActive : true });
 
   if (searchTerm) {
     andConditions.push({
@@ -31,6 +42,27 @@ const getAllFromDb = async (
           mode: 'insensitive',
         },
       })),
+    });
+  }
+
+  // Handle salary range filtering
+  if (minSalary !== undefined || maxSalary !== undefined) {
+    const salaryFilter: any = {};
+    if (minSalary !== undefined) {
+      salaryFilter.gte = Number(minSalary);
+    }
+    if (maxSalary !== undefined) {
+      salaryFilter.lte = Number(maxSalary);
+    }
+    andConditions.push({ salary: salaryFilter });
+  }
+
+  // Handle skills filtering
+  if (skills && Array.isArray(skills) && skills.length > 0) {
+    andConditions.push({
+      skills: {
+        hasSome: skills,
+      },
     });
   }
 
@@ -55,12 +87,33 @@ const getAllFromDb = async (
   const whereConditions: Prisma.JobWhereInput =
     andConditions.length > 0 ? { AND: andConditions } : {};
 
+  // Handle custom sorting
+  let orderBy: any = { createdAt: 'desc' };
+  if (filterSortBy) {
+    switch (filterSortBy) {
+      case 'date':
+        orderBy = { createdAt: 'desc' };
+        break;
+      case 'salary':
+        orderBy = { salary: 'desc' };
+        break;
+      case 'company':
+        orderBy = { company: { name: 'asc' } };
+        break;
+      case 'relevance':
+      default:
+        orderBy = { createdAt: 'desc' };
+        break;
+    }
+  } else if (sortBy && sortOrder) {
+    orderBy = { [sortBy]: sortOrder };
+  }
+
   const result = await prisma.job.findMany({
     where: whereConditions,
     skip,
     take: size,
-    orderBy:
-      sortBy && sortOrder ? { [sortBy]: sortOrder } : { createdAt: 'desc' },
+    orderBy,
     include: {
       company: true,
       applications: true,
@@ -168,76 +221,77 @@ const deleteByIdFromDb = async (id: string, userId: string) => {
   });
 };
 
-const getMyJobsFromDb = async (compnayId: string, filters: any) => {
-  const { searchTerm, isActive, type, page = 1, limit = 10 } = filters;
-  const skip = (Number(page) - 1) * Number(limit);
+const getMyJobsFromDb = async (userId: string, filters: any) => {
+  try {
+    const { searchTerm, isActive, type, page = 1, limit = 10 } = filters;
+    const skip = (Number(page) - 1) * Number(limit);
 
-  // Get user's companies
-  const userCompanies = await prisma.companyMember.findUnique({
-    where: {
-      id: compnayId,
-    },
-  });
-
-  if (!userCompanies) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Company not found');
-  }
-
-  const companyIds = userCompanies.companyId;
-
-  const andConditions: any[] = [{ companyId: { in: companyIds } }];
-
-  if (searchTerm) {
-    andConditions.push({
-      OR: [
-        { title: { contains: searchTerm, mode: 'insensitive' } },
-        { description: { contains: searchTerm, mode: 'insensitive' } },
-        { location: { contains: searchTerm, mode: 'insensitive' } },
-      ],
+    // Get user's companies
+    const userCompanies = await prisma.companyMember.findMany({
+      where: {
+        userId: userId,
+      },
     });
-  }
 
-  if (isActive !== undefined) {
-    andConditions.push({ isActive });
-  }
+    const companyIds = userCompanies.map(company => company.companyId);
 
-  if (type) {
-    andConditions.push({ type });
-  }
+    const andConditions: any[] = [{ companyId: { in: companyIds } }];
 
-  const whereConditions = { AND: andConditions };
+    if (searchTerm) {
+      andConditions.push({
+        OR: [
+          { title: { contains: searchTerm, mode: 'insensitive' } },
+          { description: { contains: searchTerm, mode: 'insensitive' } },
+          { location: { contains: searchTerm, mode: 'insensitive' } },
+        ],
+      });
+    }
 
-  const [jobs, total] = await Promise.all([
-    prisma.job.findMany({
-      where: whereConditions,
-      skip,
-      take: Number(limit),
-      orderBy: { createdAt: 'desc' },
-      include: {
-        company: true,
-        applications: {
-          include: {
-            user: {
-              include: {
-                profile: true,
+    if (isActive !== undefined) {
+      andConditions.push({ isActive });
+    }
+
+    if (type && type !== '') {
+      andConditions.push({ type });
+    }
+
+    const whereConditions = { AND: andConditions };
+
+    const [jobs, total] = await Promise.all([
+      prisma.job.findMany({
+        where: whereConditions,
+        skip,
+        take: Number(limit),
+        orderBy: { createdAt: 'desc' },
+        include: {
+          company: true,
+          applications: {
+            include: {
+              user: {
+                include: {
+                  profile: true,
+                },
               },
             },
           },
         },
-      },
-    }),
-    prisma.job.count({ where: whereConditions }),
-  ]);
+      }),
+      prisma.job.count({ where: whereConditions }),
+    ]);
 
-  return {
-    meta: {
-      page: Number(page),
-      limit: Number(limit),
-      total,
-      totalPages: Math.ceil(total / Number(limit)),
-    },
-    data: jobs,
-  };
+    return {
+      meta: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+      data: jobs,
+    };
+  } catch (error) {
+    console.error('Error in getMyJobsFromDb:', error);
+    throw error;
+  }
 };
 
 const updateJobStatusFromDb = async (
@@ -280,6 +334,90 @@ const updateJobStatusFromDb = async (
   });
 };
 
+const searchJobsFromDb = async (filters: any, options: IPaginationOption) => {
+  const { keyword, sortBy } = filters;
+  const { page, size, skip } = paginationHelper.calculatePagination(options);
+
+  const andConditions: Prisma.JobWhereInput[] = [];
+
+  // Only show active jobs
+  andConditions.push({ isActive: true });
+
+  // Search in job title, location, and company name
+  if (keyword) {
+    andConditions.push({
+      OR: [
+        {
+          title: {
+            contains: keyword,
+            mode: 'insensitive' as Prisma.QueryMode,
+          },
+        },
+        {
+          location: {
+            contains: keyword,
+            mode: 'insensitive' as Prisma.QueryMode,
+          },
+        },
+        {
+          company: {
+            name: {
+              contains: keyword,
+              mode: 'insensitive' as Prisma.QueryMode,
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  const whereConditions: Prisma.JobWhereInput =
+    andConditions.length > 0 ? { AND: andConditions } : {};
+
+  // Handle custom sorting
+  let orderBy: Prisma.JobOrderByWithRelationInput = { createdAt: 'desc' };
+  if (sortBy) {
+    switch (sortBy) {
+      case 'date':
+        orderBy = { createdAt: 'desc' };
+        break;
+      case 'salary':
+        orderBy = { salary: 'desc' };
+        break;
+      case 'company':
+        orderBy = { company: { name: 'asc' } };
+        break;
+      case 'relevance':
+      default:
+        orderBy = { createdAt: 'desc' };
+        break;
+    }
+  }
+
+  const result = await prisma.job.findMany({
+    where: whereConditions,
+    skip,
+    take: size,
+    orderBy,
+    include: {
+      company: true,
+      applications: true,
+    },
+  });
+
+  const total = await prisma.job.count({ where: whereConditions });
+
+  return {
+    meta: {
+      page,
+      size,
+      total,
+      totalPages: Math.ceil(total / size),
+    },
+    data: result,
+  };
+};
+
 export const JobService = {
   getAllFromDb,
   getByIdFromDb,
@@ -288,4 +426,5 @@ export const JobService = {
   deleteByIdFromDb,
   getMyJobsFromDb,
   updateJobStatusFromDb,
+  searchJobsFromDb,
 };

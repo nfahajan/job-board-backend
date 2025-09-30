@@ -6,6 +6,11 @@ export const createCompanySchema = z.object({
     description: z.string().optional(),
     website: z.string().url('Must be a valid URL').optional(),
     address: z.string().optional(),
+    logo: z
+      .string()
+      .url('Valid logo URL is required')
+      .optional()
+      .or(z.literal('')),
   }),
 });
 
@@ -29,4 +34,3 @@ export const addMemberSchema = z.object({
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>['body'];
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
 export type AddMemberInput = z.infer<typeof addMemberSchema>;
-

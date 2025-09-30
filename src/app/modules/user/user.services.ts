@@ -2,7 +2,11 @@ import { User } from '@prisma/client';
 import prisma from '../../../shared/prisma';
 
 const getAllFromDb = async () => {
-  const result = await prisma.user.findMany();
+  const result = await prisma.user.findMany({
+    include: {
+      profile: true,
+    },
+  });
   return result;
 };
 
@@ -49,13 +53,10 @@ const deleteByIdFromDb = async (id: string) => {
   return result;
 };
 
-const updateByIdFromDb = async (
-  id: string,
-  payload: User
-) => {
+const updateByIdFromDb = async (id: string, payload: User) => {
   const result = await prisma.user.update({
     where: {
-      id: (id),
+      id: id,
     },
     data: payload,
   });

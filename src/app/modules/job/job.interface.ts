@@ -24,4 +24,9 @@ export type IJobFilterRequest = {
   type?: string;
   salary?: number;
   companyId?: number;
+  minSalary?: number;
+  maxSalary?: number;
+  skills?: string[];
+  isActive?: boolean;
+  sortBy?: string;
 };

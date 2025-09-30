@@ -1,4 +1,4 @@
-import { Job, User } from "@prisma/client";
+import { Job, User } from '@prisma/client';
 
 export type CompanyData = {
   id: number;
@@ -6,5 +6,8 @@ export type CompanyData = {
   user?: User | null;
   name: string;
   description?: string | null;
+  website?: string | null;
+  address?: string | null;
+  logo?: string | null;
   jobs: Job[];
-}; 
+};

@@ -68,6 +68,36 @@ const updateByIdFromDb = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateMe = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    sendResponse(res, {
+      statusCode: httpStatus.UNAUTHORIZED,
+      success: false,
+      message: 'User not authenticated',
+      data: null,
+    });
+    return;
+  }
+
+  const payload = req.body;
+
+  if (req.file) {
+    const imageUrl = await FileUploadHelper.uploadToCloudinary(req.file);
+    if (imageUrl) {
+      payload.profileImage = imageUrl;
+    }
+  }
+
+  const result = await UserService.updateByIdFromDb(userId, payload);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Profile updated successfully!',
+    data: result,
+  });
+});
+
 const deleteByIdFromDb = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await UserService.deleteByIdFromDb(id);
@@ -83,6 +113,7 @@ export const UserController = {
   getAllFromDb,
   getByIdFromDb,
   getMe,
+  updateMe,
   updateByIdFromDb,
   deleteByIdFromDb,
 };

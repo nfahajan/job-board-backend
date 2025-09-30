@@ -1,6 +1,7 @@
 import express, { Application, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import httpStatus from 'http-status';
+import morgan from 'morgan';
 import globalErrorHandler from './app/middlewares/globalErrorHandeler';
 import routes from './app/routes';
 
@@ -9,6 +10,8 @@ const app: Application = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(morgan('dev'));
 
 app.use('/api/v1', routes);
 
