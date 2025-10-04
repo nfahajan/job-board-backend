@@ -343,19 +343,39 @@ const getStatsForEmployer = async (employerId: string) => {
 const getMonthlyApplicationStats = async (userId: string) => {
   // Get application counts grouped by month for the current year
   const currentYear = new Date().getFullYear();
+  const startOfYear = new Date(currentYear, 0, 1); // January 1st
+  const endOfYear = new Date(currentYear, 11, 31); // December 31st
+  // First, let's check if the user has any applications at all
+  const allApplications = await prisma.application.findMany({
+    where: {
+      userId: userId,
+    },
+    select: {
+      appliedAt: true,
+    },
+  });
 
-  const monthlyStats = await prisma.$queryRaw<
-    Array<{ month: number; count: number }>
-  >`
-    SELECT 
-      EXTRACT(MONTH FROM "appliedAt") as month,
-      COUNT(*)::int as count
-    FROM "Application"
-    WHERE "userId" = ${userId}
-      AND EXTRACT(YEAR FROM "appliedAt") = ${currentYear}
-    GROUP BY EXTRACT(MONTH FROM "appliedAt")
-    ORDER BY month ASC
-  `;
+  // Get all applications for the user in the current year
+  const applications = await prisma.application.findMany({
+    where: {
+      userId: userId,
+      appliedAt: {
+        gte: startOfYear,
+        lte: endOfYear,
+      },
+    },
+    select: {
+      appliedAt: true,
+    },
+  });
+
+  // Group applications by month
+  const monthlyCounts: { [key: number]: number } = {};
+
+  applications.forEach(app => {
+    const month = app.appliedAt.getMonth() + 1; // getMonth() returns 0-11, we want 1-12
+    monthlyCounts[month] = (monthlyCounts[month] || 0) + 1;
+  });
 
   // Create array with all 12 months, filling in 0 for months with no applications
   const months = [
@@ -375,10 +395,9 @@ const getMonthlyApplicationStats = async (userId: string) => {
 
   const result = months.map((monthName, index) => {
     const monthNumber = index + 1;
-    const foundStat = monthlyStats.find(stat => stat.month === monthNumber);
     return {
       month: monthName,
-      count: foundStat?.count || 0,
+      count: monthlyCounts[monthNumber] || 0,
     };
   });
 

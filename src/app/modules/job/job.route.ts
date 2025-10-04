@@ -24,6 +24,7 @@ router.patch(
   auth(ENUM_USER_ROLE.ADMIN),
   JobController.updateByIdFromDb
 );
+
 router.delete(
   '/admin/:id',
   auth(ENUM_USER_ROLE.ADMIN),

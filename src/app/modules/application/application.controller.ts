@@ -131,9 +131,15 @@ const getEmployerStatsHandler = catchAsync(
 const getMonthlyStatsHandler = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user as JwtPayload;
+    console.log('getMonthlyStatsHandler - user:', user);
+    console.log('getMonthlyStatsHandler - userId:', user.id);
+
     const monthlyStats = await ApplicationService.getMonthlyApplicationStats(
       user.id as string
     );
+
+    console.log('getMonthlyStatsHandler - result:', monthlyStats);
+
     sendResponse(res, {
       statusCode: httpStatus.OK,
       message: 'Monthly application stats fetched successfully',
